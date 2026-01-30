@@ -1,0 +1,12 @@
+# Ignore Virtual Environment
+venv/
+__pycache__/
+
+# Ignore Environment Variables (API Keys)
+.env
+
+# Ignore Local Database (It should be rebuilt by the user)
+faiss_index/
+
+# Ignore Mac system files
+.DS_Store
