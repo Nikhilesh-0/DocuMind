@@ -1,3 +1,109 @@
+import streamlit as st
+from src.pdf_handler import get_pdf_text, get_text_chunks
+from src.embeddings import get_vector_store
+from src.llm_chain import get_conversational_chain
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
+def main():
+    # --- PAGE CONFIGURATION ---
+    st.set_page_config("DocuMind", page_icon=":books:", layout="wide")
+    
+    # --- HEADER ---
+    st.title("🧠 DocuMind: Research Assistant")
+    st.caption("🚀 Powered by Gemini 1.5 & HuggingFace | Hallucination-Free RAG")
+
+    # --- SESSION STATE INITIALIZATION ---
+    # 1. Chat History
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
+    # 2. The Gatekeeper (Prevents Zombie Data)
+    if "docs_processed" not in st.session_state:
+        st.session_state.docs_processed = False
+
+    # --- SIDEBAR (Setup) ---
+    with st.sidebar:
+        st.header("📂 Document Center")
+        pdf_docs = st.file_uploader("Upload Research PDFs", accept_multiple_files=True)
+        
+        if st.button("Submit & Process"):
+            if not pdf_docs:
+                st.warning("⚠️ Please upload a PDF first.")
+            else:
+                with st.spinner("Processing Knowledge Base..."):
+                    try:
+                        # 1. Extract
+                        raw_text = get_pdf_text(pdf_docs)
+                        # 2. Chunk
+                        text_chunks = get_text_chunks(raw_text)
+                        # 3. Embed
+                        get_vector_store(text_chunks)
+                        
+                        # Set the Gatekeeper to TRUE
+                        st.session_state.docs_processed = True
+                        
+                        st.success("✅ Documentation Processed! You can now chat.")
+                    except Exception as e:
+                        st.error(f"Error processing document: {e}")
+
+    # --- DISPLAY CHAT HISTORY ---
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # --- CHAT INPUT ---
+    if prompt := st.chat_input("Ask a question about your documents..."):
+        
+        # Display User Message
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        # --- THE GATEKEEPER CHECK ---
+        # If the user hasn't processed docs in THIS session, stop them.
+        if not st.session_state.docs_processed:
+            with st.chat_message("assistant"):
+                st.warning("⚠️ I need you to upload and process a PDF in the sidebar first!")
+            st.session_state.messages.append({"role": "assistant", "content": "⚠️ Please upload a PDF first."})
+            return  # STOP HERE
+
+        # --- GENERATE ANSWER ---
+        api_token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+        
+        embeddings = HuggingFaceEndpointEmbeddings(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            task="feature-extraction",
+            huggingfacehub_api_token=api_token
+        )
+        
+        try:
+            # Load DB
+            new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+            docs = new_db.similarity_search(prompt)
+            
+            # Get Answer
+            chain = get_conversational_chain()
+            response = chain.invoke({"context": docs, "question": prompt})
+            
+            # Display Assistant Message
+            with st.chat_message("assistant"):
+                st.markdown(response)
+            
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            
+        except Exception as e:
+            with st.chat_message("assistant"):
+                st.error("Technical Error: API Limit Reached or Key Issue.")
+                st.info(f"Details: {e}")
+
+if __name__ == "__main__":
+    main()
 # import streamlit as st
 # from src.pdf_handler import get_pdf_text, get_text_chunks
 # from src.embeddings import get_vector_store
@@ -80,95 +186,96 @@
 # # --- ENTRY POINT (Crucial for the app to run) ---
 # if __name__ == "__main__":
 #     main()
-import streamlit as st
-from src.pdf_handler import get_pdf_text, get_text_chunks
-from src.embeddings import get_vector_store
-from src.llm_chain import get_conversational_chain
-from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
-from dotenv import load_dotenv
-import os
+# import streamlit as st
+# from src.pdf_handler import get_pdf_text, get_text_chunks
+# from src.embeddings import get_vector_store
+# from src.llm_chain import get_conversational_chain
+# from langchain_community.vectorstores import FAISS
+# from langchain_huggingface import HuggingFaceEndpointEmbeddings
+# from dotenv import load_dotenv
+# import os
 
-# Load environment variables
-load_dotenv()
+# # Load environment variables
+# load_dotenv()
 
-def main():
-    # --- PAGE CONFIGURATION ---
-    st.set_page_config("DocuMind", page_icon=":books:", layout="wide")
+# def main():
+#     # --- PAGE CONFIGURATION ---
+#     st.set_page_config("DocuMind", page_icon=":books:", layout="wide")
     
-    # --- HEADER ---
-    st.title("🧠 DocuMind: Research Assistant")
-    st.caption("🚀 Powered by Gemini 1.5 & HuggingFace | Hallucination-Free RAG")
+#     # --- HEADER ---
+#     st.title("🧠 DocuMind: Research Assistant")
+#     st.caption("🚀 Powered by Gemini 1.5 & HuggingFace | Hallucination-Free RAG")
 
-    # --- SIDEBAR (Setup) ---
-    with st.sidebar:
-        st.header("📂 Document Center")
-        pdf_docs = st.file_uploader("Upload Research PDFs", accept_multiple_files=True)
+#     # --- SIDEBAR (Setup) ---
+#     with st.sidebar:
+#         st.header("📂 Document Center")
+#         pdf_docs = st.file_uploader("Upload Research PDFs", accept_multiple_files=True)
         
-        if st.button("Submit & Process"):
-            if not pdf_docs:
-                st.warning("⚠️ Please upload a PDF first.")
-            else:
-                with st.spinner("Processing Knowledge Base..."):
-                    # 1. Extract
-                    raw_text = get_pdf_text(pdf_docs)
-                    # 2. Chunk
-                    text_chunks = get_text_chunks(raw_text)
-                    # 3. Embed
-                    get_vector_store(text_chunks)
-                    st.success("✅ Documentation Processed! You can now chat.")
+#         if st.button("Submit & Process"):
+#             if not pdf_docs:
+#                 st.warning("⚠️ Please upload a PDF first.")
+#             else:
+#                 with st.spinner("Processing Knowledge Base..."):
+#                     # 1. Extract
+#                     raw_text = get_pdf_text(pdf_docs)
+#                     # 2. Chunk
+#                     text_chunks = get_text_chunks(raw_text)
+#                     # 3. Embed
+#                     get_vector_store(text_chunks)
+#                     st.success("✅ Documentation Processed! You can now chat.")
 
-    # --- CHAT HISTORY STATE MANAGEMENT ---
-    # This keeps the chat on screen even when Streamlit reruns
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+#     # --- CHAT HISTORY STATE MANAGEMENT ---
+#     # This keeps the chat on screen even when Streamlit reruns
+#     if "messages" not in st.session_state:
+#         st.session_state.messages = []
 
-    # --- DISPLAY CHAT HISTORY ---
-    # Loop through the history and show every message
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+#     # --- DISPLAY CHAT HISTORY ---
+#     # Loop through the history and show every message
+#     for message in st.session_state.messages:
+#         with st.chat_message(message["role"]):
+#             st.markdown(message["content"])
 
-    # --- CHAT INPUT (The "ChatGPT" Box) ---
-    if prompt := st.chat_input("Ask a question about your documents..."):
+#     # --- CHAT INPUT (The "ChatGPT" Box) ---
+#     if prompt := st.chat_input("Ask a question about your documents..."):
         
-        # 1. Display User Message immediately
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        # 2. Save to history
-        st.session_state.messages.append({"role": "user", "content": prompt})
+#         # 1. Display User Message immediately
+#         with st.chat_message("user"):
+#             st.markdown(prompt)
+#         # 2. Save to history
+#         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # 3. Generate Answer
-        api_token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+#         # 3. Generate Answer
+#         api_token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
         
-        # Setup Embeddings (Must match what we used to create the DB)
-        embeddings = HuggingFaceEndpointEmbeddings(
-            model="sentence-transformers/all-MiniLM-L6-v2",
-            task="feature-extraction",
-            huggingfacehub_api_token=api_token
-        )
+#         # Setup Embeddings (Must match what we used to create the DB)
+#         embeddings = HuggingFaceEndpointEmbeddings(
+#             model="sentence-transformers/all-MiniLM-L6-v2",
+#             task="feature-extraction",
+#             huggingfacehub_api_token=api_token
+#         )
         
-        try:
-            # Load DB
-            new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-            docs = new_db.similarity_search(prompt)
+#         try:
+#             # Load DB
+#             new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+#             docs = new_db.similarity_search(prompt)
             
-            # Get Answer
-            chain = get_conversational_chain()
-            response = chain.invoke({"context": docs, "question": prompt})
+#             # Get Answer
+#             chain = get_conversational_chain()
+#             response = chain.invoke({"context": docs, "question": prompt})
             
-            # 4. Display Assistant Message
-            with st.chat_message("assistant"):
-                st.markdown(response)
+#             # 4. Display Assistant Message
+#             with st.chat_message("assistant"):
+#                 st.markdown(response)
             
-            # 5. Save to history
-            st.session_state.messages.append({"role": "assistant", "content": response})
+#             # 5. Save to history
+#             st.session_state.messages.append({"role": "assistant", "content": response})
             
-        except Exception as e:
-            # Friendly error handling
-            with st.chat_message("assistant"):
-                st.error("I need you to upload a PDF first so I can learn from it!")
-                st.info(f"Technical Error: {e}")
+#         except Exception as e:
+#             # Friendly error handling
+#             with st.chat_message("assistant"):
+#                 st.error("I need you to upload a PDF first so I can learn from it!")
+#                 st.info(f"Technical Error: {e}")
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
+
