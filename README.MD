@@ -11,7 +11,7 @@
 
 ## 📸 Interface
 
-![App Screenshot] demo_screenshot.png
+[App Screenshot] demo_screenshot.png
 
 ---
 
