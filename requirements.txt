@@ -1,8 +1,9 @@
 streamlit
-langchain>=0.2.0
-langchain-community>=0.2.0
-langchain-huggingface
+langchain==0.2.14
+langchain-community==0.2.12
+langchain-core==0.2.33
 langchain-google-genai
+langchain-huggingface
 faiss-cpu
 python-dotenv
 pypdf
