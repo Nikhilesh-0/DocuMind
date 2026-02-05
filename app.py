@@ -24,38 +24,17 @@ Production Features:
     - Chat history management
 """
 #--
-import sys
-import subprocess
-import os
-
-# INTERNAL DIAGNOSTIC: Force reinstall valid langchain
-# We check if the 'chains' module works. If not, we NUKE and reinstall.
-try:
-    from langchain.chains import create_stuff_documents_chain
-except ImportError:
-    print("⚠️ LangChain corrupted (Phantom v1.2.8 detected). Force reinstalling...")
-    # This forces pip to ignore the cache and overwrite the bad package
-    subprocess.check_call([
-        sys.executable, "-m", "pip", "install", 
-        "--force-reinstall", 
-        "--no-cache-dir", 
-        "langchain==0.2.14", 
-        "langchain-community==0.2.12",
-        "langchain-core==0.2.33"
-    ])
-    print("✅ Reinstall complete. Continuing...")
-
-# Import production modules
-from src.pdf_handler import get_pdf_text, get_text_chunks
-from src.embeddings import get_vector_store, load_vector_store
-from src.llm_chain import get_conversational_chain, validate_chain_inputs
-from dotenv import load_dotenv
-    #--
 import streamlit as st
 import os
 import logging
 import uuid
 from datetime import datetime
+from dotenv import load_dotenv
+
+from src.pdf_handler import get_pdf_text, get_text_chunks
+from src.embeddings import get_vector_store, load_vector_store
+from src.llm_chain import get_conversational_chain, validate_chain_inputs
+    #--
 
 # Import our production-grade modules
 # from src.pdf_handler import get_pdf_text, get_text_chunks
