@@ -18,7 +18,8 @@ Architecture Notes:
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_stuff_documents_chain
+# from langchain.chains.combine_documents import create_stuff_documents_chain
 import os
 import logging
 from dotenv import load_dotenv
