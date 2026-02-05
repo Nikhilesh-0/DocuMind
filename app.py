@@ -33,7 +33,7 @@ from datetime import datetime
 # Import our production-grade modules
 from src.pdf_handler import get_pdf_text, get_text_chunks
 from src.embeddings import get_vector_store, load_vector_store, cleanup_vector_store
-from src.llm_chain import get_conversational_chain, validate_chain_inputs
+from src.llm_chain import get_conversational_chain, validate_chain_inputs, format_sources
 
 from dotenv import load_dotenv
 
