@@ -23,7 +23,17 @@ Production Features:
     - User-friendly error messages
     - Chat history management
 """
+#--
+import sys
+import subprocess
 
+# INTERNAL DIAGNOSTIC: Force install langchain if missing
+try:
+    import langchain.chains
+except ImportError:
+    print("⚠️ LangChain main package missing. Installing now...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "langchain"])
+    #--
 import streamlit as st
 import os
 import logging
